@@ -76,7 +76,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(0,0,0,.03)}
 .badge-contacted,.badge-sent,.badge-complete,.badge-retention_released{background:rgba(91,155,213,.15);color:var(--blue)}.badge-contacted::before,.badge-sent::before,.badge-complete::before,.badge-retention_released::before{background:var(--blue)}
 .badge-overdue,.badge-declined{background:rgba(224,82,82,.15);color:var(--red)}.badge-overdue::before,.badge-declined::before{background:var(--red)}
 .badge-lead{background:rgba(155,114,207,.15);color:var(--purple)}.badge-lead::before{background:var(--purple)}
-.badge-inspection,.badge-progress_claim,.badge-due{background:rgba(232,162,52,.15);color:var(--amber)}.badge-inspection::before,.badge-progress_claim::before,.badge-due::before{background:var(--amber)}
+.badge-inspection,.badge-progress_claim,.badge-due,.badge-materials{background:rgba(232,162,52,.15);color:var(--amber)}.badge-inspection::before,.badge-progress_claim::before,.badge-due::before,.badge-materials::before{background:var(--amber)}
 .badge-in_progress{background:rgba(192,90,46,.15);color:var(--rust-lt)}.badge-in_progress::before{background:var(--rust-lt)}
 .badge-raised,.badge-draft{background:rgba(155,114,207,.15);color:var(--purple)}.badge-raised::before,.badge-draft::before{background:var(--purple)}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
@@ -1026,11 +1026,12 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(0,0,0,.03)}
     <div class="modal-header"><div class="modal-title" id="jobModalTitle">New Job</div><button class="modal-close" onclick="closeModal('jobModal')">✕</button></div>
     <input type="hidden" id="jobId">
     <div class="form-grid">
-      <div class="form-field full" id="jobNumberFieldWrap"><label>Link Job Number <span style="color:var(--text-3);font-weight:400;font-size:.7rem">(from Lead)</span></label><select id="jobLeadSelect"><option value="">— Select a Lead / Job Number —</option></select></div>
+      <div class="form-field full" id="jobNumberFieldWrap"><label>Link Job Number <span style="color:var(--text-3);font-weight:400;font-size:.7rem">(from Lead)</span></label><select id="jobLeadSelect" onchange="autofillJobFromLead()"><option value="">— Select a Lead / Job Number —</option></select></div>
       <div class="form-field"><label>Client Name</label><input id="jobClient" placeholder="e.g. John Smith" autocomplete="off"></div>
       <div class="form-field"><label>Phone</label><input id="jobPhone" placeholder="04XX XXX XXX" type="tel"></div>
+      <div class="form-field"><label>Email</label><input id="jobEmail" placeholder="name@example.com" type="email" autocomplete="off"></div>
       <div class="form-field"><label>Service Type</label><select id="jobType"><option>Roof Repairs</option><option>New Roof Installation</option><option>Re-Roofing</option><option>Gutters &amp; Downpipes</option><option>Commercial Roofing</option><option>Roof Inspection</option></select></div>
-      <div class="form-field"><label>Stage</label><select id="jobStage"><option value="lead">Lead</option><option value="inspection">Inspection</option><option value="quoted">Quoted</option><option value="approved">Approved</option><option value="deposit_paid">Deposit Paid</option><option value="in_progress">In Progress</option><option value="progress_claim">Progress Claim</option><option value="completed">Completed</option><option value="retention_released">Retention Released</option></select></div>
+      <div class="form-field"><label>Stage</label><select id="jobStage"><option value="lead">Lead</option><option value="inspection">Inspection</option><option value="quoted">Quoted</option><option value="approved">Approved</option><option value="deposit_paid">Deposit</option><option value="materials">Materials</option><option value="in_progress">In Progress</option><option value="progress_claim">Progress Claim</option><option value="completed">Completed</option><option value="retention_released">Retention Released</option></select></div>
       <div class="form-field full"><label>Location</label><input id="jobLocation" placeholder="Full address" autocomplete="off"></div>
       <div class="form-field"><label>Assigned To</label><select id="jobAssigned"><option>Harry</option><option>Pauly</option><option>Ronny</option></select></div>
       <div class="form-field"><label>Start Date</label><input type="date" id="jobDate"></div>
@@ -1080,9 +1081,10 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(0,0,0,.03)}
     <input type="hidden" id="inspId">
     <div class="inspection-section"><h4>Client and Site Details</h4>
       <div class="form-grid">
-        <div class="form-field full"><label>Link Job Number <span style="color:var(--text-3);font-weight:400;font-size:.7rem">(from Lead)</span></label><select id="inspLeadSelect"><option value="">— Select a Lead / Job Number —</option></select></div>
+        <div class="form-field full"><label>Link Job Number <span style="color:var(--text-3);font-weight:400;font-size:.7rem">(from Lead)</span></label><select id="inspLeadSelect" onchange="autofillInspFromLead()"><option value="">— Select a Lead / Job Number —</option></select></div>
         <div class="form-field"><label>Client Name</label><input id="inspClient" placeholder="Client name" autocomplete="off"></div>
         <div class="form-field"><label>Phone</label><input id="inspPhone" placeholder="04XX XXX XXX" type="tel"></div>
+        <div class="form-field"><label>Email</label><input id="inspEmail" placeholder="name@example.com" type="email" autocomplete="off"></div>
         <div class="form-field full"><label>Address</label><input id="inspAddress" placeholder="Full site address" autocomplete="off"></div>
         <div class="form-field"><label>Inspection Date</label><input type="date" id="inspDate"></div>
         <div class="form-field"><label>Inspected By</label><select id="inspBy"><option>Ronny</option><option>Harry</option></select></div>
@@ -1238,9 +1240,9 @@ const db=getFirestore(app);
 
 
 const ADMIN_EMAIL='toneth@roofingdownunder.com';
-const STAGES=['lead','inspection','quoted','approved','deposit_paid','in_progress','progress_claim','completed','retention_released'];
-const STAGE_LABELS={lead:'Lead',inspection:'Inspection',quoted:'Quoted',approved:'Approved',deposit_paid:'Deposit Paid',in_progress:'In Progress',progress_claim:'Progress Claim',completed:'Completed',retention_released:'Retention Released'};
-const VALID_TRANSITIONS={lead:['inspection'],inspection:['quoted'],quoted:['approved','lead'],approved:['deposit_paid'],deposit_paid:['in_progress'],in_progress:['progress_claim','completed'],progress_claim:['completed'],completed:['retention_released'],retention_released:[]};
+const STAGES=['lead','inspection','quoted','approved','deposit_paid','materials','in_progress','progress_claim','completed','retention_released'];
+const STAGE_LABELS={lead:'Lead',inspection:'Inspection',quoted:'Quoted',approved:'Approved',deposit_paid:'Deposit',materials:'Materials',in_progress:'In Progress',progress_claim:'Progress Claim',completed:'Completed',retention_released:'Retention Released'};
+const VALID_TRANSITIONS={lead:['inspection'],inspection:['quoted'],quoted:['approved','lead'],approved:['deposit_paid'],deposit_paid:['materials'],materials:['in_progress'],in_progress:['progress_claim','completed'],progress_claim:['completed'],completed:['retention_released'],retention_released:[]};
 const STAGE_INVOICE_TRIGGERS={approved:{type:'deposit',label:'Deposit Invoice (10%)',pct:0.10},in_progress:{type:'materials',label:'Materials Invoice (40%)',pct:0.40},progress_claim:{type:'progress',label:'Progress Invoice (30%)',pct:0.30},completed:{type:'retention',label:'Retention Invoice (20%)',pct:0.20}};
 const TEAM={'ronny@roofingdownunder.com':{name:'Ronny',role:'Owner'},'harry@roofingdownunder.com':{name:'Harry',role:'Site Lead'},'pauly@roofingdownunder.com':{name:'Pauly',role:'Operations'},'myla@roofingdownunder.com':{name:'Myla',role:'Operations'},'toneth@roofingdownunder.com':{name:'Toneth',role:'Admin'}};
 const TEAM_NAMES=Object.values(TEAM).map(t=>t.name);
@@ -1796,6 +1798,7 @@ function renderAllFilesPage(jobs,links){
 async function loadJobs(){
   const snap=await getDocs(collection(db,'jobs'));allJobs=[];
   snap.forEach(d=>{const data=d.data();if(notArchived(data))allJobs.push({id:d.id,...data});});
+  allJobs.sort((a,b)=>{const an=Number(a.jobNumber)||0,bn=Number(b.jobNumber)||0;if(an!==bn)return bn-an;return (b.created||'').localeCompare(a.created||'');}); // newest first by job number, date fallback
   const active=allJobs.filter(j=>j.stage==='in_progress'||j.stage==='progress_claim').length;
   document.getElementById('jobsBadge').textContent=active;document.getElementById('statActiveJobs').textContent=active;
   const tb=document.getElementById('jobsTable');
@@ -1814,10 +1817,31 @@ async function loadJobs(){
   el.innerHTML=allJobs.slice(0,4).map(j=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openJobDetail('${j.id}')"><div><div style="font-weight:500;font-size:.85rem">${j.jobNumber?`<span class="job-number-badge" style="font-size:.7rem;padding:1px 6px">#${j.jobNumber}</span> `:''} ${j.client||''}</div><div style="font-size:.75rem;color:var(--text-2)">${j.type||''}</div></div>${badge(j.stage||'lead')}</div>`).join('')||'<div class="empty-state"><div class="empty-icon">🔨</div><p>No jobs yet</p></div>';
 }
 
+window.autofillJobFromLead=()=>{
+  const jn=document.getElementById('jobLeadSelect').value;
+  if(!jn)return;
+  const lead=(allLeadsCache||[]).find(l=>String(l.jobNumber)===String(jn));
+  if(!lead)return;
+  document.getElementById('jobClient').value=lead.name||'';
+  document.getElementById('jobPhone').value=lead.phone||'';
+  document.getElementById('jobEmail').value=lead.email||'';
+  document.getElementById('jobLocation').value=lead.location||'';
+};
+window.autofillInspFromLead=()=>{
+  const jn=document.getElementById('inspLeadSelect').value;
+  if(!jn)return;
+  const lead=(allLeadsCache||[]).find(l=>String(l.jobNumber)===String(jn));
+  if(!lead)return;
+  document.getElementById('inspClient').value=lead.name||'';
+  document.getElementById('inspPhone').value=lead.phone||'';
+  document.getElementById('inspEmail').value=lead.email||'';
+  document.getElementById('inspAddress').value=lead.location||'';
+};
+
 window.openJobModal=()=>{
   document.getElementById('jobId').value='';
   document.getElementById('jobModalTitle').textContent='New Job';
-  ['jobClient','jobPhone','jobLocation','jobDate','jobValue','jobNotes','jobDriveFolder'].forEach(i=>document.getElementById(i).value='');
+  ['jobClient','jobPhone','jobEmail','jobLocation','jobDate','jobValue','jobNotes','jobDriveFolder'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('jobStage').value='lead';
   document.getElementById('jobNumberFieldWrap').style.display='';
   // Populate lead dropdown — show leads that have a jobNumber
@@ -1830,7 +1854,7 @@ window.openJobModal=()=>{
 window.openEditJobModal=async()=>{
   if(!currentJobId)return;const snap=await getDoc(doc(db,'jobs',currentJobId));if(!snap.exists())return;const j=snap.data();
   document.getElementById('jobId').value=currentJobId;
-  document.getElementById('jobClient').value=j.client||'';document.getElementById('jobPhone').value=j.phone||'';
+  document.getElementById('jobClient').value=j.client||'';document.getElementById('jobPhone').value=j.phone||'';document.getElementById('jobEmail').value=j.email||'';
   document.getElementById('jobType').value=j.type||'Roof Repairs';document.getElementById('jobStage').value=j.stage||'lead';
   document.getElementById('jobLocation').value=j.location||'';document.getElementById('jobAssigned').value=j.assigned||'Harry';
   document.getElementById('jobDate').value=j.date||'';document.getElementById('jobValue').value=j.value||'';document.getElementById('jobNotes').value=j.notes||'';document.getElementById('jobDriveFolder').value=j.driveFolder||'';
@@ -1844,7 +1868,7 @@ window.openEditJobModal=async()=>{
 };
 window.saveJob=async()=>{
   const id=document.getElementById('jobId').value;
-  const data={client:document.getElementById('jobClient').value,phone:document.getElementById('jobPhone').value,type:document.getElementById('jobType').value,stage:document.getElementById('jobStage').value,location:document.getElementById('jobLocation').value,assigned:document.getElementById('jobAssigned').value,date:document.getElementById('jobDate').value,value:document.getElementById('jobValue').value,notes:document.getElementById('jobNotes').value,driveFolder:document.getElementById('jobDriveFolder').value.trim(),updated:new Date().toISOString()};
+  const data={client:document.getElementById('jobClient').value,phone:document.getElementById('jobPhone').value,email:document.getElementById('jobEmail').value,type:document.getElementById('jobType').value,stage:document.getElementById('jobStage').value,location:document.getElementById('jobLocation').value,assigned:document.getElementById('jobAssigned').value,date:document.getElementById('jobDate').value,value:document.getElementById('jobValue').value,notes:document.getElementById('jobNotes').value,driveFolder:document.getElementById('jobDriveFolder').value.trim(),updated:new Date().toISOString()};
   try{
     if(id){
       await updateDoc(doc(db,'jobs',id),data); // jobNumber immutable — never in update
@@ -2041,6 +2065,7 @@ window.deleteComment=async(id)=>{
 async function loadLeads(){
   const snap=await getDocs(collection(db,'leads'));const leads=[];
   snap.forEach(d=>{const data=d.data();if(notArchived(data))leads.push({id:d.id,...data});});
+  leads.sort((a,b)=>(Number(b.jobNumber)||0)-(Number(a.jobNumber)||0)); // newest first (highest job number)
   allLeadsCache=leads; // cache for job/inspection modals
   const open=leads.filter(l=>l.status==='new'||l.status==='contacted').length;
   document.getElementById('leadsBadge').textContent=open;document.getElementById('statLeads').textContent=open;
@@ -2145,7 +2170,7 @@ window.openInspectionModal=()=>{
     '<option value="">— Select a Lead / Job Number —</option>'+
     leads.filter(l=>l.jobNumber).map(l=>`<option value="${l.jobNumber}">#${l.jobNumber} — ${l.name||''}</option>`).join('');
   document.getElementById('inspLeadSelect').disabled=false;
-  ['inspClient','inspPhone','inspAddress','inspDate','inspAge','inspCondition','inspQuote','inspCutList','inspMudMap','mudMapDriveUrl'].forEach(i=>document.getElementById(i).value='');
+  ['inspClient','inspPhone','inspEmail','inspAddress','inspDate','inspAge','inspCondition','inspQuote','inspCutList','inspMudMap','mudMapDriveUrl'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('inspQuoteStatus').value='Pending';
   openModal('inspectionModal');
 };
@@ -2162,6 +2187,7 @@ window.editInspection=async(id)=>{
     leads.filter(l=>l.jobNumber).map(l=>`<option value="${l.jobNumber}" ${l.jobNumber===i.jobNumber?'selected':''}>#${l.jobNumber} — ${l.name||''}</option>`).join('');
   document.getElementById('inspClient').value=i.client||'';
   document.getElementById('inspPhone').value=i.phone||'';
+  document.getElementById('inspEmail').value=i.email||'';
   document.getElementById('inspAddress').value=i.address||'';
   document.getElementById('inspDate').value=i.date||'';
   document.getElementById('inspBy').value=i.inspBy||'Ronny';
@@ -2183,6 +2209,7 @@ window.saveInspection=async()=>{
   const data={
     client:document.getElementById('inspClient').value,
     phone:document.getElementById('inspPhone').value,
+    email:document.getElementById('inspEmail').value,
     address:document.getElementById('inspAddress').value,
     date:document.getElementById('inspDate').value,
     inspBy:document.getElementById('inspBy').value,
